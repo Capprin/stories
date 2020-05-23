@@ -1,7 +1,7 @@
 import yaml
 
 # encapsulating class for vignette .yml files
-class vignette:
+class Vignette:
 
   TITLE_NAME = "title"
   INPUTS_NAME = "inputs"
@@ -16,7 +16,7 @@ class vignette:
   def load(self, fileName):
     # load file as yaml
     with open(fileName) as file:
-      contents = yaml.load(file)
+      contents = yaml.load(file, Loader=yaml.SafeLoader)
       # TODO: handle case where file not found
 
       # parse into params, checking for requesite vars
@@ -37,5 +37,16 @@ class vignette:
         raise Exception("the '" + OUTPUTS_NAME + "' property is missing in " + fileName)
 
       # additional constraints
-      if len(self.inputs) == 0 and len(self.outputs) == 0:
+      if self.inputs is None and self.outputs is None:
         raise Exception("either '" + INPUTS_NAME + "' or '" + OUTPUTS_NAME + "' must have nonzero length in " + fileName)
+
+  def inputLength():
+    return self.__length(self.inputs)
+
+  def outputLength():
+    return self.__length(self.outputs)
+
+  def __length(localDict):
+    if localDict is None:
+      return 0
+    return len(localDict)
