@@ -1,6 +1,6 @@
 title: this is the middle
 inputs:
-  - input one
-  - input two
+  - character
+  - thing
 outputs:
-  - output one
+  - character
