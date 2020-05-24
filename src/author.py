@@ -6,6 +6,7 @@ class Author:
 
   def __init__(self):
     # initialize vignette dicts (hash -> list)
+    self.startDict = {}
     self.inputsDict = {}
     self.outputsDict = {}
 
@@ -24,8 +25,12 @@ class Author:
       print("failed to load vignette at " + path + ". Reason: " + str(e))
       return
     # add to storage
-    self.__addVignette(self.inputsDict, tmp, tmp.inputsHash())
-    self.__addVignette(self.outputsDict, tmp, tmp.outputsHash())
+    if tmp.inputLength() == 0:
+      # starts have their own storage
+      self.__addVignette(self.startDict, tmp, tmp.outputsHash())
+    else:
+      self.__addVignette(self.inputsDict, tmp, tmp.inputsHash())
+      self.__addVignette(self.outputsDict, tmp, tmp.outputsHash())
   
   def __addVignette(self, localDict, vignette, vHash):
     if not vHash in localDict:
@@ -49,12 +54,10 @@ class Author:
       story.append(random.choice(possVignettes))
 
     # add beginning
-    beginnings = self.inputsDict["c0s0t0"]
     needOutputHash = story[-1].inputsHash()
-    possVignettes = self.outputsDict[needOutputHash]
-    possBeginnings = list(set(beginnings) & set(possVignettes)) #intersection of beginnings and solving outputs
-    if possBeginnings is None or len(possBeginnings) == 0:
+    if not needOutputHash in self.startDict:
       raise Exception("cannot solve story; initial vignette with output hash \"" + needOutputHash + "\" does not exist.")
+    possBeginnings = self.startDict[needOutputHash]
     story.append(random.choice(possBeginnings))
 
     # flip for chronology
