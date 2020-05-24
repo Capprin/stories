@@ -1,14 +1,20 @@
-import os
-import sys
-import json
-from vignette import Vignette
+from author import Author
 
+# load vignettes
 VIGNETTE_DIR = "C:\\Users\cappr\Projects\Stories\etc\\"
+storyBuilder = Author()
+storyBuilder.loadAll(VIGNETTE_DIR)
 
-# load .yml files
-for file in os.listdir(VIGNETTE_DIR):
-  if (file.endswith(".yml")):
-    print("Loading " + file)
-    tmp = Vignette()
-    tmp.load(VIGNETTE_DIR + file)
-    print("Vignette \"" + tmp.title + "\" has inputs " + json.dumps(tmp.inputs) + ", and outputs " + json.dumps(tmp.outputs) + ".")
+while True:
+  i = input("Enter the story length to create, or q to quit: ")
+  if i == 'q':
+    break
+  # generate story
+  try:
+    story = storyBuilder.compile(int(i))
+  except Exception as e:
+    print("Story writing failed. Reason: " + str(e))
+  else:
+    print("Compiled story:")
+    for v in story:
+      print(v.toString())
