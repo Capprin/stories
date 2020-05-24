@@ -1,4 +1,4 @@
-import os
+import os, random
 from vignette import Vignette
 
 # responsible for compiling many vignettes into stories
@@ -34,11 +34,28 @@ class Author:
       localDict[vHash].append(vignette)
 
   def compile(self, numVignettes):
+    story = []
     # pick end (randomly, for now)
-    # for numVignettes:
-    #   search for vignettes with correct outputs
-    #     (maybe take advantage of another type of data struct)
-    #     think about different types of inputs/outputs too
-    #   add random one to end
-    # on end, pick start at random
-    return
+    possEndings = self.outputsDict["c0s0t0"]
+    story.append(random.choice(possEndings))
+
+    # add body vignettes
+    for i in range(numVignettes-2):
+      # use inputs for last item as needed outputs for next item
+      needOutputHash = story[i].inputsHash()
+      if not needOutputHash in self.outputsDict:
+        raise Exception("cannot solve story; necessary output hash \"" + needOutputHash + "\" does not exist.")
+      possVignettes = self.outputsDict[needOutputHash]
+      story.append(random.choice(possVignettes))
+
+    # add beginning
+    beginnings = self.inputsDict["c0s0t0"]
+    needOutputHash = story[-1].inputsHash()
+    possVignettes = self.outputsDict[needOutputHash]
+    possBeginnings = list(set(beginnings) & set(possVignettes)) #intersection of beginnings and solving outputs
+    if possBeginnings is None or len(possBeginnings) == 0:
+      raise Exception("cannot solve story; initial vignette with output hash \"" + needOutputHash + "\" does not exist.")
+    story.append(random.choice(possBeginnings))
+
+    # flip for chronology
+    return reversed(story)
