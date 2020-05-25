@@ -7,10 +7,6 @@ class Vignette:
   INPUTS_NAME = "inputs"
   OUTPUTS_NAME = "outputs"
 
-  CHARACTER_NAME = "character"
-  SETTING_NAME = "setting"
-  THING_NAME = "thing"
-
   def __init__(self):
     # required of vignettes
     self.title = None
@@ -43,46 +39,30 @@ class Vignette:
       if self.inputs is None and self.outputs is None:
         raise Exception("either '" + INPUTS_NAME + "' or '" + OUTPUTS_NAME + "' must have nonzero length in " + fileName)
       
-      poss = [self.CHARACTER_NAME, self.SETTING_NAME, self.THING_NAME]
       if not provInputs is None:
-        for i in provInputs:
-          if not i in poss:
-            raise Exception("input \"" + i + "\" is not one of [" + ", ".join(poss) + "].")
-        self.inputs = provInputs
+        self.__addActors(self.inputs, provInputs)
       if not provOutputs is None:
-        for o in provOutputs:
-          if not o in poss:
-            raise Exception("output \"" + i + "\" is not one of [" + ", ".join(poss) + "].")
-        self.outputs = provOutputs
+        self.__addActors(self.outputs, provOutputs)
 
-  def inputsHash(self):
-    return self.hash(self.inputs)
-
-  def outputsHash(self):
-    return self.hash(self.outputs)
+  def __addActors(self, localDict, actorDict):
+    for a in actorDict:
+      k = list(a)[0]
+      v = a[k]
+      if not k in localDict:
+        localDict[k] = v
+      else:
+        localDict[k] += v
 
   def hash(self, localDict):
-    occurrences = self.__getOccurrences(localDict)
-    return "c{}s{}t{}".format(occurrences[self.CHARACTER_NAME], occurrences[self.SETTING_NAME], occurrences[self.THING_NAME])
-
-  def __getOccurrences(self, localDict):
-    # count occurrences of ea. type in dict
-    occurrences = {self.CHARACTER_NAME:0, self.SETTING_NAME:0, self.THING_NAME:0}
-    for item in localDict:
-      if item in occurrences:
-        occurrences[item] += 1
-    return occurrences
-
-  def inputLength(self):
-    return self.__length(self.inputs)
-
-  def outputLength(self):
-    return self.__length(self.outputs)
-
-  def __length(self, localDict):
-    if localDict is None:
-      return 0
-    return len(localDict)
+    if localDict is None or len(localDict) == 0:
+      return ""
+    keysAlpha = list(localDict)
+    keysAlpha.sort()
+    outHash = ""
+    for key in keysAlpha:
+      outHash += key[0]
+      outHash += str(localDict[key])
+    return outHash
 
   def toString(self):
-    return "Vignette: \"" + self.title + "\"; inputs: {" + ", ".join(self.inputs) + "}; outputs: {" + ", ".join(self.outputs) + "}."
+    return "Vignette: \"" + self.title + "\", with input hash \"" + self.hash(self.inputs) + "\", and output hash \"" + self.hash(self.outputs) + "\"."
