@@ -16,5 +16,5 @@ while True:
     print("Story writing failed. Reason: " + str(e))
   else:
     print("Compiled story:")
-    for v in story:
-      print(v.toString())
+    for v in story.vignettes:
+      print("  " + str(v))
