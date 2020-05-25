@@ -64,5 +64,8 @@ class Vignette:
       outHash += str(localDict[key])
     return outHash
 
-  def toString(self):
-    return "Vignette: \"" + self.title + "\", with input hash \"" + self.hash(self.inputs) + "\", and output hash \"" + self.hash(self.outputs) + "\"."
+  def __str__(self):
+    return "vignette: \"" + self.title + "\", with input hash \"" + self.hash(self.inputs) + "\", and output hash \"" + self.hash(self.outputs) + "\""
+
+  def __repr__(self):
+    return str(self)

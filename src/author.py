@@ -1,14 +1,16 @@
 import os, random
 from vignette import Vignette
+from story import Story
 
 # responsible for compiling many vignettes into stories
 class Author:
 
   def __init__(self):
     # initialize vignette dicts (hash -> list)
-    self.startDict = {}
+    self.startsList = []
     self.inputsDict = {}
     self.outputsDict = {}
+    self.endsDict = {}
 
   def loadAll(self, directory):
     # find all .yml files in supplied directory
@@ -25,40 +27,52 @@ class Author:
       print("failed to load vignette at " + path + ". Reason: " + str(e))
       return
     # add to storage
-    if tmp.inputLength() == 0:
+    if len(tmp.inputs) == 0:
       # starts have their own storage
-      self.__addVignette(self.startDict, tmp, tmp.outputsHash())
+      self.startsList.append(tmp)
+    elif len(tmp.outputs) == 0:
+      # so do ends
+      self.__addVignette(self.endsDict, tmp.hash(tmp.inputs), tmp)
     else:
-      self.__addVignette(self.inputsDict, tmp, tmp.inputsHash())
-      self.__addVignette(self.outputsDict, tmp, tmp.outputsHash())
+      self.__addVignette(self.inputsDict, tmp.hash(tmp.inputs), tmp)
+      self.__addVignette(self.outputsDict, tmp.hash(tmp.outputs), tmp)
   
-  def __addVignette(self, localDict, vignette, vHash):
+  def __addVignette(self, localDict, vHash, vignette):
     if not vHash in localDict:
       localDict[vHash] = [vignette]
     else:
       localDict[vHash].append(vignette)
 
   def compile(self, numVignettes):
-    story = []
-    # pick end (randomly, for now)
-    possEndings = self.outputsDict["c0s0t0"]
-    story.append(random.choice(possEndings))
+    story = Story()
+
+    # pick beginning (randomly, for now)
+    if len(self.startsList) == 0:
+      raise Exception("cannot solve story; there are no starting vignettes.")
+    story.push(random.choice(self.startsList))
 
     # add body vignettes
     for i in range(numVignettes-2):
-      # use inputs for last item as needed outputs for next item
-      needOutputHash = story[i].inputsHash()
-      if not needOutputHash in self.outputsDict:
-        raise Exception("cannot solve story; necessary output hash \"" + needOutputHash + "\" does not exist.")
-      possVignettes = self.outputsDict[needOutputHash]
-      story.append(random.choice(possVignettes))
+      # use possible story inputs as condition
+      possKeys = story.possActors()
+      possVignettes = []
+      for key in possKeys:
+        if key in self.inputsDict:
+          possVignettes.extend(self.inputsDict[key])
+      if len(possVignettes) == 0:
+        # no matches
+        raise Exception("cannot solve story; no vignettes can use current state. Current state: " + str(story.stateProgression[-1]))
+      story.push(random.choice(possVignettes))
 
-    # add beginning
-    needOutputHash = story[-1].inputsHash()
-    if not needOutputHash in self.startDict:
-      raise Exception("cannot solve story; initial vignette with output hash \"" + needOutputHash + "\" does not exist.")
-    possBeginnings = self.startDict[needOutputHash]
-    story.append(random.choice(possBeginnings))
+    # find an ending (redundant, but WIP for now)
+    possKeys = story.possActors()
+    possVignettes = []
+    for key in possKeys:
+      if key in self.endsDict:
+        possVignettes.extend(self.endsDict[key])
+    if len(possVignettes) == 0:
+        # no matches
+        raise Exception("cannot solve story; no end vignettes can use current state. Current state: " + str(story.stateProgression[-1]))
+    story.push(random.choice(possVignettes))
 
-    # flip for chronology
-    return reversed(story)
+    return story
