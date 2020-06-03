@@ -1,69 +1,70 @@
-import itertools
-
-# responsible for storage of the "story"
-# contains:
-#   - representation of story state over time (characters, items, etc)
-#       - for now, dict
-#       - eventually graph rep. (for associations)
-#   - actual list of vignettes
+from neo4j import GraphDatabase
 
 class Story:
 
-  def __init__(self):
-    # state progression over time
-    # list contains dicts of actor counts at every event step
-    self.stateProgression = []
+  DB_HOST_NAME = "db_host"
+  DB_PORT_NAME = "db_port"
+  DB_USER_NAME = "db_user"
+  DB_PASS_NAME = "db_pass"
+
+  def __init__(self, config):
+    self.config = config
+    # driver handles connection to db
+    # can't do encrypted conn in Neo4j>4.0
+    self._driver = GraphDatabase.driver("bolt://" + config[self.DB_HOST_NAME] + ":" + str(config[self.DB_PORT_NAME]),
+                                        auth=(config[self.DB_USER_NAME], config[self.DB_PASS_NAME]),
+                                        encrypted=False)
+    # clear db
+    self.clear()
     self.vignettes = []
-    self.step = 0
 
   def push(self, vignette):
-    # check if vignette can be added (confirm existence & sufficience)
-    if not self.canPush(vignette):
-      raise Exception("cannot push " + str(vignette) + "; insufficient state")
-
+    if not vignette.isValid():
+      raise Exception("vignette " + vignette + " is invalid")
+    # setup
+    with self._driver.session() as session:
+      queryItems = []
+      if vignette.inputs and vignette.actions:
+        # add both inputs, actions if existent
+        queryItems = vignette.inputs + vignette.actions
+      elif vignette.actions:
+        # add actions if only existent
+        queryItems = vignette.actions
+      else:
+        # just push if only inputs
+        self.vignettes.append(vignette)
+        return
+      query = '\n'.join(queryItems)
+      tx = session.begin_transaction()
+      try:
+        tx.run(query)
+      except:
+        tx.rollback()
+        raise Exception("failed to push vignette " + str(vignette))
+      tx.commit()
     self.vignettes.append(vignette)
-    self.stateProgression.append({})
-    # handle inputs
-    if len(vignette.inputs) != 0:
-      self.stateProgression[self.step] = self.stateProgression[self.step-1] #replicate old state
-      for k, v in vignette.inputs.items():
-        self.stateProgression[self.step][k] -= v
-    # handle outputs
-    if len(vignette.outputs) != 0:
-      for k,v in vignette.outputs.items():
-        if k in self.stateProgression[self.step]:
-          self.stateProgression[self.step][k] += v
-        else:
-          self.stateProgression[self.step][k] = v
-    self.step += 1
 
   def canPush(self, vignette):
-    if len(vignette.inputs) == 0:
+    if not vignette.inputs:
       return True
-    # for now, check if we have enough of each actor to add this vignette
-    currentState = self.stateProgression[-1]
-    for k, v in vignette.inputs.items():
-      if not k in currentState or currentState[k] < v:
+    if not vignette.isValid():
+      return False
+    # run vignette input queries
+    with self._driver.session() as session:
+      try:
+        # do dryrun of inputs with return
+        tx = session.begin_transaction()
+        queryItems = vignette.inputs + ["RETURN *"]
+        query = '\n'.join(queryItems)
+        tx.run(query)
+        tx.rollback()
+      except Exception as e:
+        # generic failure, quantize later (maybe wrap with exec fn?)
         return False
     return True
 
-  def possActors(self):
-    # get all combinations of state (could get really slow)
-    actorQuants = []
-    # iterate over keys
-    for k, v in self.stateProgression[-1].items():
-      possNums = [""]
-      firstChar = k[0]
-      # iterate over values
-      for i in range(v):
-        possNums.append(firstChar + str(i+1))
-      actorQuants.append(possNums)
-    # cartesian product
-    tuples = itertools.product(*actorQuants)
-    out = []
-    for t in tuples:
-      out.append(''.join(t))
-    return out
-
   def clear(self):
-    self.__init__()
+    self.vignettes = []
+    # rm all nodes
+    with self._driver.session() as session:
+      session.run("MATCH (n) DETACH DELETE n")
