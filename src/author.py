@@ -5,12 +5,12 @@ from story import Story
 # responsible for compiling many vignettes into stories
 class Author:
 
-  def __init__(self):
-    # initialize vignette dicts (hash -> list)
+  def __init__(self, config):
+    self.config = config
+    # initialize vignette storage
     self.startsList = []
-    self.inputsDict = {}
-    self.outputsDict = {}
-    self.endsDict = {}
+    self.mainsList = []
+    self.endsList = []
 
   def loadAll(self, directory):
     # find all .yml files in supplied directory
@@ -27,24 +27,17 @@ class Author:
       print("failed to load vignette at " + path + ". Reason: " + str(e))
       return
     # add to storage
-    if len(tmp.inputs) == 0:
+    if not tmp.inputs:
       # starts have their own storage
       self.startsList.append(tmp)
-    elif len(tmp.outputs) == 0:
+    elif not tmp.actions:
       # so do ends
-      self.__addVignette(self.endsDict, tmp.hash(tmp.inputs), tmp)
+      self.endsList.append(tmp)
     else:
-      self.__addVignette(self.inputsDict, tmp.hash(tmp.inputs), tmp)
-      self.__addVignette(self.outputsDict, tmp.hash(tmp.outputs), tmp)
-  
-  def __addVignette(self, localDict, vHash, vignette):
-    if not vHash in localDict:
-      localDict[vHash] = [vignette]
-    else:
-      localDict[vHash].append(vignette)
+      self.mainsList.append(tmp)
 
   def compile(self, numVignettes):
-    story = Story()
+    story = Story(self.config)
 
     # pick beginning (randomly, for now)
     if len(self.startsList) == 0:
@@ -53,23 +46,20 @@ class Author:
 
     # add body vignettes
     for i in range(numVignettes-2):
-      # use possible story inputs as condition
-      possKeys = story.possActors()
       possVignettes = []
-      for key in possKeys:
-        if key in self.inputsDict:
-          possVignettes.extend(self.inputsDict[key])
+      for vignette in self.mainsList:
+        if story.canPush(vignette):
+          possVignettes.append(vignette)
       if len(possVignettes) == 0:
         # no matches
-        raise Exception("cannot solve story; no vignettes can use current state. Current state: " + str(story.stateProgression[-1]))
+        raise Exception("cannot solve story; no vignettes can use current state.")
       story.push(random.choice(possVignettes))
 
     # find an ending (redundant, but WIP for now)
-    possKeys = story.possActors()
     possVignettes = []
-    for key in possKeys:
-      if key in self.endsDict:
-        possVignettes.extend(self.endsDict[key])
+    for vignette in self.endsList:
+      if story.canPush(vignette):
+        possVignettes.append(vignette)
     if len(possVignettes) == 0:
         # no matches
         raise Exception("cannot solve story; no end vignettes can use current state. Current state: " + str(story.stateProgression[-1]))
